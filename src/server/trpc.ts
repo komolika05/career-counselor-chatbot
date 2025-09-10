@@ -1,16 +1,15 @@
+import { prisma } from "@/lib/prisma";
 import { initTRPC } from "@trpc/server";
-import superjson from "superjson";
-import { prisma } from "./db";
+
+const t = initTRPC.context<Context>().create();
 
 export const createContext = () => {
-  return { prisma };
+  return {
+    prisma,
+  };
 };
 
-export type Context = ReturnType<typeof createContext>;
-
-const t = initTRPC.context<Context>().create({
-  transformer: superjson,
-});
+type Context = ReturnType<typeof createContext>;
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
+export const procedure = t.procedure;

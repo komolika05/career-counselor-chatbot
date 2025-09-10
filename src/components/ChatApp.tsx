@@ -1,121 +1,63 @@
-// src/components/ChatApp.tsx
 "use client";
 
-import React, { useState } from "react";
-import { trpc } from "@/utils/trpc";
+import { trpc } from "@/utils/trpc"; // adjust path if needed
+import { useState } from "react";
 
 export default function ChatApp() {
-  const [selectedConvId, setSelectedConvId] = useState<number | null>(null);
-  const [text, setText] = useState("");
+  const [title, setTitle] = useState("");
 
-  const listQuery = trpc.conversation.list.useQuery();
-  const createConv = trpc.conversation.create.useMutation({
-    onSuccess() {
-      listQuery.refetch();
+  // fetch all conversations
+  const {
+    data: conversations,
+    isLoading,
+    isError,
+  } = trpc.conversation.list.useQuery();
+
+  // mutation for creating new conversation
+  const utils = trpc.useUtils(); // lets us refetch after mutation
+  const createConversation = trpc.conversation.create.useMutation({
+    onSuccess: () => {
+      utils.conversation.list.invalidate(); // refresh list
+      setTitle("");
     },
   });
 
-  const getConv = trpc.conversation.get.useQuery(
-    { id: selectedConvId ?? -1 },
-    { enabled: selectedConvId !== null }
-  );
-
-  const addMessage = trpc.conversation.addMessage.useMutation({
-    onSuccess() {
-      // refresh
-      if (selectedConvId) getConv.refetch();
-      listQuery.refetch();
-      setText("");
-    },
-  });
+  if (isLoading) return <div>Loading conversations...</div>;
+  if (isError) return <div>Failed to load conversations.</div>;
 
   return (
-    <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
-      <div style={{ width: 280 }}>
-        <div style={{ marginBottom: 10 }}>
-          <button
-            onClick={() => createConv.mutate({ title: "New Conversation" })}
-            style={{ padding: "8px 12px" }}
-          >
-            + New conversation
-          </button>
-        </div>
+    <div className="p-4">
+      <h2 className="text-lg font-semibold mb-2">Conversations</h2>
 
-        <div>
-          {listQuery.data?.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => setSelectedConvId(c.id)}
-              style={{
-                cursor: "pointer",
-                padding: 8,
-                border:
-                  selectedConvId === c.id
-                    ? "2px solid black"
-                    : "1px solid #ddd",
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ fontWeight: 600 }}>
-                {c.title ?? `Conversation ${c.id}`}
-              </div>
-              <div style={{ fontSize: 12, color: "#666" }}>
-                {c.messages?.length ?? 0} messages
-              </div>
-            </div>
+      {conversations && conversations.length > 0 ? (
+        <ul className="list-disc pl-4">
+          {conversations.map((c) => (
+            <li key={c.id}>{c.title ?? "Untitled"}</li>
           ))}
-        </div>
-      </div>
+        </ul>
+      ) : (
+        <p className="text-gray-500">No conversations yet.</p>
+      )}
 
-      <div style={{ flex: 1 }}>
-        {!selectedConvId ? (
-          <div>Select a conversation to start chatting</div>
-        ) : (
-          <div>
-            <h3>{getConv.data?.title ?? `Conversation ${selectedConvId}`}</h3>
-
-            <div
-              style={{ minHeight: 300, border: "1px solid #eee", padding: 12 }}
-            >
-              {getConv.data?.messages?.map((m) => (
-                <div key={m.id} style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 12, color: "#888" }}>{m.role}</div>
-                  <div>{m.content}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 12 }}>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={4}
-                style={{ width: "100%", padding: 8 }}
-                placeholder="Ask about careers, say your background..."
-              />
-              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button
-                  onClick={() =>
-                    addMessage.mutate({
-                      conversationId: selectedConvId,
-                      role: "user",
-                      content: text,
-                    })
-                  }
-                >
-                  Send
-                </button>
-                <button
-                  onClick={() => {
-                    setText("");
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      <div className="mt-4 flex gap-2">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Enter conversation title"
+          className="border rounded px-2 py-1 flex-1"
+        />
+        <button
+          onClick={() => {
+            if (title.trim().length > 0) {
+              createConversation.mutate({ title });
+            }
+          }}
+          disabled={createConversation.isPending}
+          className="bg-blue-500 text-white px-3 py-1 rounded"
+        >
+          {createConversation.isPending ? "Creating..." : "Create"}
+        </button>
       </div>
     </div>
   );
