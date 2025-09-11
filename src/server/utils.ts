@@ -1,15 +1,15 @@
 export async function generateCareerReply(userText: string) {
-  const OPENAI_KEY = process.env.OPENAI_API_KEY;
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const systemPrompt = `You are a helpful, pragmatic AI career counsellor. Give concise, actionable advice and suggested next steps.`;
 
   // If API key is present, call OpenAI (chat completion)
-  if (OPENAI_KEY) {
+  if (GEMINI_API_KEY) {
     try {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
         },
         body: JSON.stringify({
           model: "gpt-3.5-turbo",

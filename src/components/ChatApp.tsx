@@ -1,64 +1,63 @@
 "use client";
-
-import { trpc } from "@/utils/trpc"; // adjust path if needed
+import { trpc } from "@/utils/trpc";
 import { useState } from "react";
+import Sidebar from "./Sidebar";
+import ChatWindow from "./ChatWindow";
 
 export default function ChatApp() {
-  const [title, setTitle] = useState("");
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    number | null
+  >(null);
 
-  // fetch all conversations
   const {
     data: conversations,
     isLoading,
     isError,
   } = trpc.conversation.list.useQuery();
 
-  // mutation for creating new conversation
-  const utils = trpc.useUtils(); // lets us refetch after mutation
+  const utils = trpc.useUtils();
+
   const createConversation = trpc.conversation.create.useMutation({
-    onSuccess: () => {
-      utils.conversation.list.invalidate(); // refresh list
-      setTitle("");
+    onSuccess: (newConversation) => {
+      console.log(
+        "✅ [Client] Conversation created successfully:",
+        newConversation
+      );
+      utils.conversation.list.invalidate();
+      setSelectedConversationId(newConversation.id);
+    },
+    // ADD THIS BLOCK TO CATCH ERRORS
+    onError: (error) => {
+      console.error("❌ [Client] Failed to create conversation:", error);
+      // The `error.data` object often contains the specific Zod validation errors
+      if (error.data) {
+        console.error("Zod validation errors:", error.data);
+      }
     },
   });
 
-  if (isLoading) return <div>Loading conversations...</div>;
+  const handleCreateConversation = () => {
+    const input = { title: "New Conversation" }; // Let's use a non-empty title
+    console.log(
+      "▶️ [Client] Attempting to create conversation with input:",
+      input
+    );
+    createConversation.mutate(input);
+  };
+
+  if (isLoading) return <div>Loading...</div>;
   if (isError) return <div>Failed to load conversations.</div>;
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold mb-2">Conversations</h2>
-
-      {conversations && conversations.length > 0 ? (
-        <ul className="list-disc pl-4">
-          {conversations.map((c) => (
-            <li key={c.id}>{c.title ?? "Untitled"}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-500">No conversations yet.</p>
-      )}
-
-      <div className="mt-4 flex gap-2">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter conversation title"
-          className="border rounded px-2 py-1 flex-1"
-        />
-        <button
-          onClick={() => {
-            if (title.trim().length > 0) {
-              createConversation.mutate({ title });
-            }
-          }}
-          disabled={createConversation.isPending}
-          className="bg-blue-500 text-white px-3 py-1 rounded"
-        >
-          {createConversation.isPending ? "Creating..." : "Create"}
-        </button>
-      </div>
+    <div className="flex h-[calc(100vh-150px)] border border-gray-300 rounded-lg shadow-lg">
+      <Sidebar
+        conversations={conversations ?? []}
+        selectedConversationId={selectedConversationId}
+        onSelectConversation={setSelectedConversationId}
+        onCreateConversation={handleCreateConversation}
+        isCreating={createConversation.isPending}
+      />
+      <ChatWindow selectedConversationId={selectedConversationId} />
     </div>
   );
 }
