@@ -1,6 +1,8 @@
 // src/components/ChatWindow.tsx
 "use client";
 
+import type React from "react";
+
 import { trpc } from "@/utils/trpc";
 import { useState, useRef, useEffect } from "react";
 

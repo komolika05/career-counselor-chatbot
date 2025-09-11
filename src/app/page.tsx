@@ -1,16 +1,26 @@
 "use client";
 
 import dynamic from "next/dynamic";
+
 const ChatApp = dynamic(() => import("@/components/ChatApp"), { ssr: false });
 
 export default function Page() {
   return (
-    <main style={{ padding: 20, fontFamily: "Inter, system-ui, sans-serif" }}>
-      <h1>AI Career Counsellor</h1>
-      <p>
-        Ask about career paths, project ideas, interview prep and next steps.
-      </p>
-      <ChatApp />
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="h-screen flex flex-col">
+        <div className="p-4 md:p-6 border-b border-border shrink-0">
+          <h1 className="text-3xl md:text-4xl font-bold text-balance">
+            AI Career Counsellor
+          </h1>
+          <p className="text-muted-foreground mt-2 text-pretty">
+            Ask about career paths, project ideas, interview prep and next
+            steps.
+          </p>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <ChatApp />
+        </div>
+      </div>
     </main>
   );
 }

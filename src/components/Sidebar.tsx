@@ -1,7 +1,7 @@
 // src/components/Sidebar.tsx
 "use client";
 
-import { Conversation } from "@prisma/client";
+import type { Conversation } from "@prisma/client";
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -19,7 +19,7 @@ export default function Sidebar({
   isCreating,
 }: SidebarProps) {
   return (
-    <div className="w-1/4 bg-gray-100 p-4 border-r border-gray-300 flex flex-col">
+    <div className="w-1/4 bg-gray-800 p-4 border-r border-gray-300 flex flex-col">
       <h2 className="text-xl font-bold mb-4">History</h2>
       <button
         onClick={onCreateConversation}
@@ -37,8 +37,8 @@ export default function Sidebar({
                   onClick={() => onSelectConversation(c.id)}
                   className={`w-full text-left p-2 rounded ${
                     c.id === selectedConversationId
-                      ? "bg-blue-200"
-                      : "hover:bg-gray-200"
+                      ? "bg-blue-800"
+                      : "hover:bg-gray-700"
                   }`}
                 >
                   {c.title ?? "Untitled"}
