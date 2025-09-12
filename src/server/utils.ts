@@ -1,55 +1,84 @@
 export async function generateCareerReply(userText: string) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const systemPrompt = `You are a helpful, pragmatic AI career counsellor. Give concise, actionable advice and suggested next steps.`;
+  const systemPrompt = `
+You are an expert career counsellor.
+- Always provide concise, actionable, and practical advice.
+- Focus on clear next steps (skills to learn, projects to do, resources to explore).
+- Never drift into unrelated topics — you are ONLY a career advisor.
+- Adapt advice based on the user's goals, background, and challenges.
+- If user’s input is vague, ask clarifying questions before giving a plan.
+`;
 
-  // If API key is present, call OpenAI (chat completion)
   if (GEMINI_API_KEY) {
     try {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${GEMINI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userText },
-          ],
-          max_tokens: 500,
-        }),
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: systemPrompt }, { text: userText }],
+              },
+            ],
+            generationConfig: {
+              maxOutputTokens: 500,
+              temperature: 0.7,
+            },
+          }),
+        }
+      );
 
       if (!res.ok) {
-        console.error("OpenAI error", await res.text());
+        console.error("Gemini API error", await res.text());
         return fallbackReply(userText);
       }
+
       const j = await res.json();
-      const reply = j.choices?.[0]?.message?.content;
+      const reply =
+        j.candidates?.[0]?.content?.parts?.[0]?.text ??
+        j.candidates?.[0]?.output ??
+        null;
+
       return reply ?? fallbackReply(userText);
     } catch (e) {
-      console.error("OpenAI call failed", e);
+      console.error("Gemini API call failed", e);
       return fallbackReply(userText);
     }
   }
 
-  // no API key -> return a simple rule-based reply (free)
   return fallbackReply(userText);
 }
 
 function fallbackReply(text: string) {
-  // very simple keyword-based fallback (expand as you like)
   const t = text.toLowerCase();
   if (
     t.includes("frontend") ||
     t.includes("react") ||
     t.includes("javascript")
   ) {
-    return `If you're interested in frontend development: start with HTML/CSS basics, learn JavaScript (ES6+), then React. Build small projects (todo, portfolio) and learn one styling approach (Tailwind/CSS Modules). Consider GitHub portfolio + small freelancing jobs. Next steps: 1) finish 3 projects, 2) prepare 10 interview questions.`;
+    return `If you're interested in frontend development: 
+1) Learn HTML, CSS, and modern JavaScript (ES6+).  
+2) Master React and one styling approach (Tailwind/CSS Modules).  
+3) Build 3 projects (portfolio, todo app, dashboard).  
+4) Share them on GitHub and LinkedIn.  
+Next steps: finish projects + prepare interview questions.`;
   }
   if (t.includes("data") || t.includes("machine") || t.includes("ai")) {
-    return `For data/ML careers: strengthen Python, statistics, and basic ML. Learn pandas, scikit-learn, and one deep learning framework (PyTorch). Do 2-3 projects and explain your evaluation approach. Next steps: 1) complete a Kaggle micro-project, 2) write a short case study.`;
+    return `For a career in data/ML:  
+1) Strengthen Python, statistics, and basic ML.  
+2) Learn pandas, scikit-learn, and PyTorch.  
+3) Do 2–3 projects with clear evaluation metrics.  
+Next steps: complete a Kaggle micro-project + write a case study.`;
   }
-  return `Thanks for sharing — here's a short plan: 1) clarify short-term goal (6-12 months), 2) list required skills, 3) pick 2-3 small projects to demonstrate those skills, 4) build a short study schedule. Tell me your current background (education / experience) and I will make the plan specific.`;
+  return `Here’s a short starter plan:  
+1) Define your 6–12 month career goal.  
+2) List essential skills needed.  
+3) Pick 2–3 projects to showcase those skills.  
+4) Create a study schedule and track progress.  
+Tell me your background (education/experience) so I can refine this plan.`;
 }

@@ -22,7 +22,6 @@ export const conversationRouter = router({
       });
     }),
 
-  // ADD LOGS TO THE CREATE PROCEDURE
   create: procedure
     .input(
       z.object({
