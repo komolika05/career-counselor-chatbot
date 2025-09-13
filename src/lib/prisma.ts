@@ -12,7 +12,7 @@ export const prisma =
         url:
           process.env.DATABASE_URL +
           "?pgbouncer=true&connection_limit=1&prepared_statements=false",
-      },
+      }
     },
     log: ["query", "error", "warn"],
   });

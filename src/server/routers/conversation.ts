@@ -1,12 +1,9 @@
-// src/server/routers/conversation.ts
 import { router, procedure } from "../trpc";
 import { z } from "zod";
-import { generateCareerReply } from "../utils";
+import { generateCareerReply, generateTitle } from "../utils";
 
 export const conversationRouter = router({
-  // ... (list and get procedures remain the same)
   list: procedure.query(async ({ ctx }) => {
-    console.log("▶️ [Server] Fetching conversation list...");
     return await ctx.prisma.conversation.findMany({
       orderBy: { updatedAt: "desc" },
     });
@@ -15,55 +12,30 @@ export const conversationRouter = router({
   get: procedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      console.log(`▶️ [Server] Fetching conversation with ID: ${input.id}`);
       return ctx.prisma.conversation.findUnique({
         where: { id: input.id },
         include: { messages: { orderBy: { createdAt: "asc" } } },
       });
     }),
 
-  create: procedure
-    .input(
-      z.object({
-        title: z.string().min(1, "Title cannot be empty"), // Let's make the validation explicit
-      })
-    )
+  delete: procedure
+    .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      console.log(
-        "▶️ [Server] Received request to create conversation with input:",
-        input
-      );
-      try {
-        const newConversation = await ctx.prisma.conversation.create({
-          data: { title: input.title },
-        });
-        console.log(
-          "✅ [Server] Successfully created conversation:",
-          newConversation
-        );
-        return newConversation;
-      } catch (error) {
-        console.error(
-          "❌ [Server] Database error creating conversation:",
-          error
-        );
-        throw error; // re-throw the error so tRPC can handle it
-      }
+      // 1. Delete all messages for that conversation
+      await ctx.prisma.message.deleteMany({
+        where: { conversationId: input.id },
+      });
+
+      // 2. Delete the conversation itself
+      return await ctx.prisma.conversation.delete({
+        where: { id: input.id },
+      });
     }),
 
-  // ... (sendMessageAndGetReply remains the same)
-  sendMessageAndGetReply: procedure
-    .input(
-      z.object({
-        conversationId: z.number(),
-        content: z.string(),
-      })
-    )
+  // For adding messages to an EXISTING conversation
+  addMessage: procedure
+    .input(z.object({ conversationId: z.number(), content: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      console.log(
-        `▶️ [Server] Received message for convo ${input.conversationId}`
-      );
-      // ... rest of the function
       await ctx.prisma.message.create({
         data: {
           role: "user",
@@ -72,16 +44,43 @@ export const conversationRouter = router({
         },
       });
       const aiReplyContent = await generateCareerReply(input.content);
-      const aiMessage = await ctx.prisma.message.create({
+      return await ctx.prisma.message.create({
         data: {
           role: "assistant",
           content: aiReplyContent,
           conversationId: input.conversationId,
         },
       });
-      console.log(
-        `✅ [Server] Saved user message and AI reply for convo ${input.conversationId}`
-      );
-      return aiMessage;
+    }),
+
+  // For the FIRST message of a NEW conversation
+  startAndSendMessage: procedure
+    .input(z.object({ content: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // 1. Generate the title from the first message
+      const title = await generateTitle(input.content);
+
+      // 2. Create the conversation with the dynamic title and the first message
+      const newConversation = await ctx.prisma.conversation.create({
+        data: {
+          title: title, // Use the generated title here
+          messages: {
+            create: [{ role: "user", content: input.content }],
+          },
+        },
+      });
+
+      // 3. Get the AI reply
+      const aiReplyContent = await generateCareerReply(input.content);
+      await ctx.prisma.message.create({
+        data: {
+          role: "assistant",
+          content: aiReplyContent,
+          conversationId: newConversation.id,
+        },
+      });
+
+      // 4. Return the ID of the new conversation
+      return { conversationId: newConversation.id };
     }),
 });

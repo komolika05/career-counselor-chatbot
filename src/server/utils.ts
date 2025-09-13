@@ -82,3 +82,35 @@ Next steps: complete a Kaggle micro-project + write a case study.`;
 4) Create a study schedule and track progress.  
 Tell me your background (education/experience) so I can refine this plan.`;
 }
+
+export async function generateTitle(userText: string) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const titlePrompt = `Summarize the following user query into a concise title of 5 words or less. Do not add any prefixes, quotes, or introductory text. Just provide the title. Query: "${userText}"`;
+
+  if (GEMINI_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
+            generationConfig: { maxOutputTokens: 20 },
+          }),
+        }
+      );
+      if (!res.ok) return fallbackTitle(userText);
+      const j = await res.json();
+      const title = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      return title ?? fallbackTitle(userText);
+    } catch (e) {
+      return fallbackTitle(userText);
+    }
+  }
+  return fallbackTitle(userText);
+}
+
+function fallbackTitle(text: string) {
+  return text.split(" ").slice(0, 5).join(" ");
+}
