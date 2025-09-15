@@ -1,11 +1,10 @@
-// src/components/ChatWindow.tsx
 "use client";
 
 import type React from "react";
 import { trpc } from "@/utils/trpc";
 import { useState, useRef, useEffect } from "react";
 import TypewriterMessage from "./TypeWriterMessage";
-import type { AppRouter } from "@/server/routers/_app"; // Import AppRouter type
+import type { AppRouter } from "@/server/routers/_app";
 import type { inferRouterOutputs } from "@trpc/server";
 
 // Infer the type for a single conversation
@@ -50,7 +49,6 @@ export default function ChatWindow({
         id: newMessage.conversationId,
       });
 
-      // Corrected: use .setData()
       utils.conversation.get.setData(
         { id: newMessage.conversationId },
         // Add explicit type to the updater function's parameter
@@ -114,7 +112,6 @@ export default function ChatWindow({
   return (
     <div className="flex-1 flex flex-col bg-background">
       <div className="flex-grow p-6 overflow-y-auto">
-        {/* ... (rest of the JSX is the same as before) ... */}
         {!selectedConversationId && (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <p>Select a conversation or start a new one.</p>
