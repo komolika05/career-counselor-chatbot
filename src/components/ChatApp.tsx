@@ -1,4 +1,3 @@
-// src/components/ChatApp.tsx
 "use client";
 import { trpc } from "@/utils/trpc";
 import { useState, useEffect } from "react";
@@ -9,6 +8,7 @@ export default function ChatApp() {
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | null
   >(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const utils = trpc.useUtils();
   const {
@@ -17,20 +17,29 @@ export default function ChatApp() {
     isError,
   } = trpc.conversation.list.useQuery();
 
-  // Set the first conversation as selected on initial load
   useEffect(() => {
-    if (!selectedConversationId && conversations && conversations.length > 0) {
+    if (isInitialLoad && conversations && conversations.length > 0) {
       setSelectedConversationId(conversations[0].id);
+      setIsInitialLoad(false); // Prevent this from running again
+    }
+  }, [conversations, isInitialLoad]);
+
+  useEffect(() => {
+    if (conversations && selectedConversationId) {
+      const selectedExists = conversations.some(
+        (c) => c.id === selectedConversationId
+      );
+      if (!selectedExists) {
+        setSelectedConversationId(
+          conversations.length > 0 ? conversations[0].id : null
+        );
+      }
     }
   }, [conversations, selectedConversationId]);
 
   const deleteConversation = trpc.conversation.delete.useMutation({
-    onSuccess: (deletedConv) => {
+    onSuccess: () => {
       utils.conversation.list.invalidate();
-      // If the deleted chat was the one being viewed, clear the window
-      if (selectedConversationId === deletedConv.id) {
-        setSelectedConversationId(null);
-      }
     },
     onError: (error) => {
       console.error("❌ [Client] Failed to delete conversation:", error);
@@ -41,7 +50,6 @@ export default function ChatApp() {
     deleteConversation.mutate({ id });
   };
 
-  // This function just clears the selection, ChatWindow will handle the creation
   const handleNewChat = () => {
     setSelectedConversationId(null);
   };
@@ -60,7 +68,7 @@ export default function ChatApp() {
       />
       <ChatWindow
         selectedConversationId={selectedConversationId}
-        setSelectedConversationId={setSelectedConversationId} // Pass setter to update on creation
+        setSelectedConversationId={setSelectedConversationId}
       />
     </div>
   );
