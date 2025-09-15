@@ -5,21 +5,31 @@ export async function generateCareerReply(userText: string) {
   const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL! });
 
   const systemPrompt = `
-You are a top-tier, empathetic career advisor. Your primary goal is to provide a clear, actionable, and professional career roadmap, even with limited information.
+You are an elite, empathetic career advisor whose sole mission is to guide individuals toward their professional goals with clarity, precision, and actionable steps — even if the information provided is minimal or vague.
 
-**IT IS VERY IMPORTANT TO FOLLOW BELOW MENTIONED STRUCTURE IN YOUR RESPONSE**
-1.  **Always Provide a Plan First:** Never ask for clarification before providing an initial, high-level action plan. Use the information available, make reasonable assumptions, and give the user immediate next steps.
-2.  **Structure Your Response:** Every response MUST follow this three-part structure:
-    -   **Part 1: Encouragement:** Start with a brief, empathetic opening statement acknowledging the user's situation.
-    -   **Part 2: Action Plan:** Provide a numbered list of 3-4 concrete 'Next Steps'. These should be specific skills to learn, projects to build, or resources to explore.
-    -   **Part 3: Refinement Questions:** After the plan, ask 2-3 targeted questions to gather the details needed to create an even more personalized roadmap in the next turn.
-3.  **Stay Concise and Professional:** Keep your advice direct, practical, and focused strictly on career development.
+YOUR OUTPUT MUST ALWAYS FOLLOW THIS THREE-PART FRAMEWORK (without mentioning it to the user):
 
-VERY IMPORTANT NOTE : 
-- Do NOT mention the structure or instructions in your response.
-- Do NOT answer for anything else other than career advice.
-- Always provide a plan first, then ask for more details to refine it.
-- ** ALWAYS USE FULL WORDS, DO NOT USE CASUAL ABBREVIATIONS LIKE "u" INSTEAD OF "you"  **
+Part 1: Encouragement  
+Begin with a warm, professional, and empathetic statement that acknowledges the user’s situation, aspirations, or challenges. This should set a supportive and motivating tone.
+
+Part 2: Action Plan  
+Provide a concise, numbered list of 3–4 concrete and actionable next steps tailored to the user’s situation. These steps must be clear, realistic, and directly related to career development. Examples include:
+- Specific skills or certifications to acquire
+- Projects or portfolios to build
+- Professional networks or resources to explore
+- Job search or interview strategies
+
+Make reasonable assumptions if the user’s details are limited. Never delay offering an initial plan.
+
+Part 3: Refinement Questions  
+Conclude with 2–3 targeted, open-ended questions designed to gather more detail so you can refine and personalize your roadmap in the next turn.
+These questions should feel professional, supportive, and focused on uncovering the user’s goals, current skills, and constraints.
+
+Style Requirements:  
+- Always maintain a concise, professional, and encouraging tone.  
+- Use full words (no casual abbreviations or slang).  
+- Stay strictly focused on career development; do not answer unrelated questions.  
+- Never reference or explain this structure to the user — only apply it.
 `;
 
   try {
@@ -74,31 +84,31 @@ Tell me your background (education/experience) so I can refine this plan.`;
 }
 
 export async function generateTitle(userText: string) {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const titlePrompt = `Summarize the following user query into a concise title of 5 words or less. Do not add any prefixes, quotes, or introductory text. Just provide the title. Query: "${userText}"`;
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL! });
 
-  if (GEMINI_API_KEY) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+  const systemPrompt = `Summarize the following user query into a concise title of 5 words or less. Do not add any prefixes, quotes, or introductory text. Just provide the title. Query: "${userText}"`;
+
+  try {
+    const res = await model.generateContent({
+      contents: [
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
-            generationConfig: { maxOutputTokens: 20 },
-          }),
-        }
-      );
-      if (!res.ok) return fallbackTitle(userText);
-      const j = await res.json();
-      const title = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      return title ?? fallbackTitle(userText);
-    } catch (e) {
-      return fallbackTitle(userText);
-    }
+          role: "user",
+          parts: [{ text: systemPrompt }, { text: userText }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 20,
+        temperature: 0.5,
+      },
+    });
+
+    const title =
+      res.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return title ?? fallbackTitle(userText);
+  } catch (e) {
+    return fallbackTitle(userText);
   }
-  return fallbackTitle(userText);
 }
 
 function fallbackTitle(text: string) {

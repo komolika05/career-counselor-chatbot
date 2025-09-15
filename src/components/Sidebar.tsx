@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, MessageSquare, Trash2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
+import { useState } from "react";
 
 interface SidebarProps {
   conversations: Conversation[];
@@ -21,6 +23,8 @@ export default function Sidebar({
   onNewChat,
   onDeleteConversation,
 }: SidebarProps) {
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+
   return (
     <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col h-full">
       {/* Header */}
@@ -56,25 +60,29 @@ export default function Sidebar({
                 onClick={() => onSelectConversation(conversation.id)}
               >
                 <MessageSquare className="h-4 w-4 text-sidebar-foreground/60 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-sidebar-foreground truncate">
-                    {conversation.title || "Untitled Chat"}
-                  </p>
-                  <p className="text-xs text-sidebar-foreground/60 mt-1">
-                    {new Date(conversation.createdAt).toLocaleDateString()}
-                  </p>
+                <div className="flex-1 flex row  justify-between min-w-0">
+                  <div>
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
+                      {conversation.title || "Untitled Chat"}
+                    </p>
+                    <p className="text-xs text-sidebar-foreground/60 mt-1">
+                      {new Date(conversation.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteId(conversation.id);
+                      }}
+                      className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteConversation(conversation.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
               </div>
             ))}
           </div>
@@ -89,6 +97,19 @@ export default function Sidebar({
             </p>
           </div>
         )}
+
+        <ConfirmDeleteDialog
+          open={deleteId !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteId(null);
+          }}
+          onConfirm={() => {
+            if (deleteId) {
+              onDeleteConversation(deleteId);
+              setDeleteId(null);
+            }
+          }}
+        />
       </ScrollArea>
     </div>
   );

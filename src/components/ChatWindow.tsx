@@ -161,7 +161,7 @@ export default function ChatWindow({
                 "rounded-2xl px-4 py-3 max-w-[70%] shadow-sm",
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground ml-auto"
-                  : "bg-muted text-muted-foreground"
+                  : "bg-muted text-secondary-foreground"
               )}
             >
               {msg.role === "assistant" &&
@@ -169,7 +169,7 @@ export default function ChatWindow({
                 <TypewriterMessage message={msg.content} />
               ) : (
                 <p
-                  className="text-sm leading-relaxed"
+                  className="leading-relaxed"
                   style={{ whiteSpace: "pre-wrap" }}
                 >
                   {msg.content}
