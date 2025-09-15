@@ -46,8 +46,16 @@ Style Requirements:
       },
     });
 
-    const reply = res.response.candidates?.[0]?.content?.parts?.[0]?.text;
-    return reply ?? fallbackReply(userText);
+    let reply = res.response.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!reply) {
+      console.log(
+        "No reply from gemini",
+        JSON.stringify(res.response, null, 2)
+      );
+      reply = fallbackReply(userText);
+    }
+    return reply;
   } catch (e) {
     console.error("Gemini API call failed", e);
     return fallbackReply(userText);
