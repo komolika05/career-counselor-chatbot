@@ -41,7 +41,7 @@ Style Requirements:
         },
       ],
       generationConfig: {
-        maxOutputTokens: 500,
+        maxOutputTokens: 2048,
         temperature: 0.7,
       },
     });
@@ -106,7 +106,7 @@ export async function generateTitle(userText: string) {
         },
       ],
       generationConfig: {
-        maxOutputTokens: 20,
+        maxOutputTokens: 200,
         temperature: 0.5,
       },
     });
