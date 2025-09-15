@@ -1,5 +1,9 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export async function generateCareerReply(userText: string) {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL! });
+
   const systemPrompt = `
 You are a top-tier, empathetic career advisor. Your primary goal is to provide a clear, actionable, and professional career roadmap, even with limited information.
 
@@ -18,49 +22,26 @@ VERY IMPORTANT NOTE :
 - ** ALWAYS USE FULL WORDS, DO NOT USE CASUAL ABBREVIATIONS LIKE "u" INSTEAD OF "you"  **
 `;
 
-  if (GEMINI_API_KEY) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+  try {
+    const res = await model.generateContent({
+      contents: [
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: systemPrompt }, { text: userText }],
-              },
-            ],
-            generationConfig: {
-              maxOutputTokens: 500,
-              temperature: 0.7,
-            },
-          }),
-        }
-      );
+          role: "user",
+          parts: [{ text: systemPrompt }, { text: userText }],
+        },
+      ],
+      generationConfig: {
+        maxOutputTokens: 500,
+        temperature: 0.7,
+      },
+    });
 
-      if (!res.ok) {
-        console.error("Gemini API error", await res.text());
-        return fallbackReply(userText);
-      }
-
-      const j = await res.json();
-      const reply =
-        j.candidates?.[0]?.content?.parts?.[0]?.text ??
-        j.candidates?.[0]?.output ??
-        null;
-
-      return reply ?? fallbackReply(userText);
-    } catch (e) {
-      console.error("Gemini API call failed", e);
-      return fallbackReply(userText);
-    }
+    const reply = res.response.candidates?.[0]?.content?.parts?.[0]?.text;
+    return reply ?? fallbackReply(userText);
+  } catch (e) {
+    console.error("Gemini API call failed", e);
+    return fallbackReply(userText);
   }
-
-  return fallbackReply(userText);
 }
 
 function fallbackReply(text: string) {
