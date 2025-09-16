@@ -1,4 +1,3 @@
-// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -24,8 +23,17 @@ const config: Config = {
           foreground: "hsl(var(--muted-foreground))",
         },
       },
+      animation: {
+        bounce: "bounce 1.4s infinite ease-in-out both",
+      },
+      keyframes: {
+        bounce: {
+          "0%, 80%, 100%": { transform: "scale(0)" },
+          "40%": { transform: "scale(1.0)" },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 export default config;

@@ -27,18 +27,8 @@ export default function ChatApp() {
     }
   }, [conversations, isInitialLoad]);
 
-  useEffect(() => {
-    if (conversations && selectedConversationId) {
-      const selectedExists = conversations.some(
-        (c) => c.id === selectedConversationId
-      );
-      if (!selectedExists) {
-        setSelectedConversationId(
-          conversations.length > 0 ? conversations[0].id : null
-        );
-      }
-    }
-  }, [conversations, selectedConversationId]);
+  // ❌ This problematic useEffect has been removed.
+  // It was causing the new chat to switch to the last conversation.
 
   const deleteConversation = trpc.conversation.delete.useMutation({
     onSuccess: () => {
@@ -49,7 +39,18 @@ export default function ChatApp() {
     },
   });
 
+  // ✨ UPDATED: Logic to gracefully select another chat if the active one is deleted.
   const handleDeleteConversation = (id: number) => {
+    const currentConversations = conversations ?? [];
+    if (selectedConversationId === id) {
+      const index = currentConversations.findIndex((c) => c.id === id);
+      if (index !== -1) {
+        // Prefer selecting the item before, fallback to the one after
+        const nextSelection =
+          currentConversations[index - 1] || currentConversations[index + 1];
+        setSelectedConversationId(nextSelection ? nextSelection.id : null);
+      }
+    }
     deleteConversation.mutate({ id });
   };
 

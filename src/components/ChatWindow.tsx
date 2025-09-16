@@ -21,11 +21,24 @@ interface ChatWindowProps {
   setSelectedConversationId: (id: number) => void;
 }
 
+// ✨ NEW: Typing Indicator component
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1.5">
+    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.3s]"></span>
+    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.15s]"></span>
+    <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/70"></span>
+  </div>
+);
+
 export default function ChatWindow({
   selectedConversationId,
   setSelectedConversationId,
 }: ChatWindowProps) {
   const [content, setContent] = useState("");
+  // ✨ NEW: State to hold the user's first message optimistically
+  const [optimisticMessage, setOptimisticMessage] = useState<string | null>(
+    null
+  );
   const utils = trpc.useUtils();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +55,12 @@ export default function ChatWindow({
     },
     onError: (error) => {
       console.error("Failed to start conversation:", error);
+      // Clear the optimistic message on error
+      setOptimisticMessage(null);
+    },
+    // ✨ NEW: Clear the optimistic message once the mutation is settled
+    onSettled: () => {
+      setOptimisticMessage(null);
     },
   });
 
@@ -89,8 +108,8 @@ export default function ChatWindow({
   });
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView();
-  }, [conversation?.messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conversation?.messages, optimisticMessage]); // Also trigger on optimistic message
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +122,8 @@ export default function ChatWindow({
         content: trimmedContent,
       });
     } else {
+      // ✨ NEW: Set the optimistic message before sending
+      setOptimisticMessage(trimmedContent);
       startConversation.mutate({ content: trimmedContent });
     }
     setContent("");
@@ -113,30 +134,22 @@ export default function ChatWindow({
   return (
     <div className="flex-1 flex flex-col bg-background h-full overflow-hidden">
       {/* Chat Messages Area */}
-      <ScrollArea className="flex-1 h-0 p-6">
-        {!selectedConversationId && (
+      <ScrollArea className="flex-1 mt-6 h-0 p-6">
+        {!selectedConversationId && !optimisticMessage && (
           <div className="flex h-full items-center justify-center">
             <Card className="p-8 text-center max-w-md">
               <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold mb-2">Welcome to AI Chat</h3>
               <p className="text-muted-foreground mb-4">
-                Start a new conversation or select an existing one from the
-                sidebar to begin chatting.
-              </p>
-              <p className="text-sm text-muted-foreground">
-                I'm here to help with your career questions and provide
-                guidance.
+                Start a new conversation to begin chatting.
               </p>
             </Card>
           </div>
         )}
 
         {isLoading && selectedConversationId && (
-          <div className="flex items-center justify-center h-32">
+          <div className="flex items-center justify-center h-full">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <span className="ml-2 text-muted-foreground">
-              Loading messages...
-            </span>
           </div>
         )}
 
@@ -144,28 +157,26 @@ export default function ChatWindow({
           <div
             key={msg.id}
             className={cn(
-              "mb-4 mt-6 flex gap-3",
+              "mb-4 flex gap-3",
               msg.role === "user" ? "justify-end" : "justify-start"
             )}
           >
             {msg.role === "assistant" && (
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-primary-foreground" />
-                </div>
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <Bot className="h-4 w-4 text-primary-foreground" />
               </div>
             )}
-
             <div
               className={cn(
                 "rounded-2xl px-4 py-3 max-w-[70%] shadow-sm",
                 msg.role === "user"
-                  ? "bg-primary text-white ml-auto"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-muted text-secondary-foreground"
               )}
             >
               {msg.role === "assistant" &&
-              index === conversation.messages.length - 1 ? (
+              index === conversation.messages.length - 1 &&
+              !addMessage.isPending ? ( // Only typewrite when not waiting for user message to process
                 <TypewriterMessage message={msg.content} />
               ) : (
                 <p
@@ -176,29 +187,36 @@ export default function ChatWindow({
                 </p>
               )}
             </div>
-
             {msg.role === "user" && (
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                </div>
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <User className="h-4 w-4 text-muted-foreground" />
               </div>
             )}
           </div>
         ))}
 
-        {isSending && selectedConversationId && (
-          <div className="mb-6 flex gap-3 justify-start">
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <Bot className="h-4 w-4 text-primary-foreground" />
-              </div>
+        {/* ✨ NEW: Render the optimistic user message for a new chat */}
+        {optimisticMessage && (
+          <div className="mb-4 flex gap-3 justify-end">
+            <div className="rounded-2xl px-4 py-3 max-w-[70%] shadow-sm bg-primary text-primary-foreground">
+              <p className="leading-relaxed" style={{ whiteSpace: "pre-wrap" }}>
+                {optimisticMessage}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+              <User className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+        )}
+
+        {/* ✨ UPDATED: Show typing indicator while waiting for a response */}
+        {isSending && (
+          <div className="mb-4 flex gap-3 justify-start">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <Bot className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="rounded-2xl px-4 py-3 bg-muted text-muted-foreground shadow-sm">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
-              </div>
+              <TypingIndicator />
             </div>
           </div>
         )}
@@ -221,7 +239,6 @@ export default function ChatWindow({
               type="submit"
               disabled={isSending || !content.trim()}
               size="icon"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isSending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
