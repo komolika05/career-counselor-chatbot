@@ -160,7 +160,7 @@ export default function ChatWindow({
               className={cn(
                 "rounded-2xl px-4 py-3 max-w-[70%] shadow-sm",
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground ml-auto"
+                  ? "bg-primary text-white ml-auto"
                   : "bg-muted text-secondary-foreground"
               )}
             >

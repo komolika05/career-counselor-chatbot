@@ -21,18 +21,15 @@ export const conversationRouter = router({
   delete: procedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      // 1. Delete all messages for that conversation
       await ctx.prisma.message.deleteMany({
         where: { conversationId: input.id },
       });
 
-      // 2. Delete the conversation itself
       return await ctx.prisma.conversation.delete({
         where: { id: input.id },
       });
     }),
 
-  // For adding messages to an EXISTING conversation
   addMessage: procedure
     .input(z.object({ conversationId: z.number(), content: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -53,24 +50,20 @@ export const conversationRouter = router({
       });
     }),
 
-  // For the FIRST message of a NEW conversation
   startAndSendMessage: procedure
     .input(z.object({ content: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // 1. Generate the title from the first message
       const title = await generateTitle(input.content);
 
-      // 2. Create the conversation with the dynamic title and the first message
       const newConversation = await ctx.prisma.conversation.create({
         data: {
-          title: title, // Use the generated title here
+          title: title,
           messages: {
             create: [{ role: "user", content: input.content }],
           },
         },
       });
 
-      // 3. Get the AI reply
       const aiReplyContent = await generateCareerReply(input.content);
       await ctx.prisma.message.create({
         data: {
@@ -80,7 +73,6 @@ export const conversationRouter = router({
         },
       });
 
-      // 4. Return the ID of the new conversation
       return { conversationId: newConversation.id };
     }),
 });

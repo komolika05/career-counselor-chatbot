@@ -25,12 +25,12 @@ Part 3: Refinement Questions
 Conclude with 2–3 targeted, open-ended questions designed to gather more detail so you can refine and personalize your roadmap in the next turn.
 These questions should feel professional, supportive, and focused on uncovering the user’s goals, current skills, and constraints.
 
-Style Requirements:  
-- Always maintain a concise, professional, and encouraging tone.  
-- Use full words (no casual abbreviations or slang).  
-- Stay strictly focused on career development; do not answer unrelated questions.  
+Style Requirements:
+- Always maintain a concise, professional, and encouraging tone.
+- Use full words (no casual abbreviations or slang).
+- Stay strictly focused on career development; do not answer unrelated questions.
 - Never reference or explain this structure to the user — only apply it.
-`;
+- **Ensure all output is grammatically correct and free of spelling errors.**`;
 
   try {
     const res = await model.generateContent({
@@ -92,31 +92,31 @@ Tell me your background (education/experience) so I can refine this plan.`;
 }
 
 export async function generateTitle(userText: string) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL! });
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const titlePrompt = `Summarize the following user query into a concise title of 5 words or less. Do not add any prefixes, quotes, or introductory text. Just provide the title. Query: "${userText}"`;
 
-  const systemPrompt = `Summarize the following user query into a concise title of 5 words or less. Do not add any prefixes, quotes, or introductory text. Just provide the title. Query: "${userText}"`;
-
-  try {
-    const res = await model.generateContent({
-      contents: [
+  if (GEMINI_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
-          role: "user",
-          parts: [{ text: systemPrompt }, { text: userText }],
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: 200,
-        temperature: 0.5,
-      },
-    });
-
-    const title =
-      res.response.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    return title ?? fallbackTitle(userText);
-  } catch (e) {
-    return fallbackTitle(userText);
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: titlePrompt }] }],
+            generationConfig: { maxOutputTokens: 20 },
+          }),
+        }
+      );
+      if (!res.ok) return fallbackTitle(userText);
+      const j = await res.json();
+      const title = j.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      return title ?? fallbackTitle(userText);
+    } catch (e) {
+      return fallbackTitle(userText);
+    }
   }
+  return fallbackTitle(userText);
 }
 
 function fallbackTitle(text: string) {
